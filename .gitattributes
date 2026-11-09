@@ -1,0 +1,7 @@
+# 统一换行符：源码与文本资源一律 LF（与上级工作区约定一致）
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.jpg binary
+*.ogg binary

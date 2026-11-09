@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# IDE
+.idea/
+*.iml
+eclipse/
+.classpath
+.project
+.settings/
+bin/
+
+# 运行目录（Minecraft 客户端/服务端数据）
+run/
+# 1.0.14 流体测试用的独立服务端实例（含存档，约 13MB）
+run-fluid-test/
+
+# 构建日志（本地产物，不是源码）
+build_log.txt
+*.log
+
+# 手动下载的依赖
+libs/
+
+# 数据生成输出
+src/generated/resources/
+
+# 系统文件
+Thumbs.db
+.DS_Store

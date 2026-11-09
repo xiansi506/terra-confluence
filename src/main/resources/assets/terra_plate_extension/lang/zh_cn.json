@@ -1,0 +1,19 @@
+{
+  "jei.terra_plate_extension.category.title": "泰拉凝炼",
+  "jei.terra_plate_extension.label.before": "合成前",
+  "jei.terra_plate_extension.label.after": "合成后",
+  "jei.terra_plate_extension.tooltip.required": "合成前方块",
+  "jei.terra_plate_extension.tooltip.transformed": "合成后方块",
+  "jei.terra_plate_extension.tooltip.position": "位置：x=%s, y=%s, z=%s",
+  "jei.terra_plate_extension.tooltip.no_condition": "无额外条件（原版行为）",
+  "jei.terra_plate_extension.tooltip.no_transform": "无方块转化",
+  "jei.terra_plate_extension.tooltip.vanilla_platform": "原版平台：中心与四角为活石，四边为青金石块",
+  "jei.terra_plate_extension.tooltip.any_block": "任意方块",
+  "jei.terra_plate_extension.tooltip.no_requirement": "该位置无方块要求",
+  "jei.terra_plate_extension.tooltip.plate": "泰拉凝聚板（在此合成）",
+  "jei.terra_plate_extension.tooltip.transformed_to": "合成后：%s",
+  "jei.terra_plate_extension.tooltip.state_require": "要求方块状态：",
+  "jei.terra_plate_extension.tooltip.fluid_flowing": "需要【流动】的流体，水源方块不算",
+  "jei.terra_plate_extension.tooltip.fluid_source": "需要流体【源头】（水源方块）",
+  "message.terra_plate_extension.condition_fail": "泰拉凝聚板下方的方块不满足配方条件！"
+}

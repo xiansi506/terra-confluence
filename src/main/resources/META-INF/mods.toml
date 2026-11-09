@@ -1,0 +1,43 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+# 声明 Mixin 配置文件（Forge 1.20.1 通过 mods.toml 加载）
+mixinConfigs="terra_plate_extension.mixins.json"
+
+[[mods]]
+modId="terra_plate_extension"
+version="${file.jarVersion}"
+displayName="Terra Confluence"
+authors="Terra Confluence Team"
+description='''泰拉凝炼为植物魔法（Botania）的泰拉凝聚板加入可自定义的配方。
+
+通过数据包或 KubeJS 指定材料、魔力消耗和产物，还能检查板下 3×3 的方块或流体，并在合成后转化指定位置。安装 JEI 后可查看平台转化前后的布局。'''
+
+[[dependencies.terra_plate_extension]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.terra_plate_extension]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.terra_plate_extension]]
+    modId="botania"
+    mandatory=true
+    versionRange="[1.20.1,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.terra_plate_extension]]
+    modId="jei"
+    mandatory=false
+    versionRange="[15,)"
+    ordering="NONE"
+    side="CLIENT"

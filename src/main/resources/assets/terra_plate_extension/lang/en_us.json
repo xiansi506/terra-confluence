@@ -1,0 +1,19 @@
+{
+  "jei.terra_plate_extension.category.title": "Terra Confluence",
+  "jei.terra_plate_extension.label.before": "Before",
+  "jei.terra_plate_extension.label.after": "After",
+  "jei.terra_plate_extension.tooltip.required": "Required block (before)",
+  "jei.terra_plate_extension.tooltip.transformed": "Transformed block (after)",
+  "jei.terra_plate_extension.tooltip.position": "Position: x=%s, y=%s, z=%s",
+  "jei.terra_plate_extension.tooltip.no_condition": "No extra condition (vanilla behavior)",
+  "jei.terra_plate_extension.tooltip.no_transform": "No block transformation",
+  "jei.terra_plate_extension.tooltip.vanilla_platform": "Vanilla platform: livingrock at center and corners, lapis blocks on the edges",
+  "jei.terra_plate_extension.tooltip.any_block": "Any block",
+  "jei.terra_plate_extension.tooltip.no_requirement": "No block requirement at this position",
+  "jei.terra_plate_extension.tooltip.plate": "Terra Plate (craft here)",
+  "jei.terra_plate_extension.tooltip.transformed_to": "After crafting: %s",
+  "jei.terra_plate_extension.tooltip.state_require": "Requires block state:",
+  "jei.terra_plate_extension.tooltip.fluid_flowing": "Requires a FLOWING fluid — a source block does not count",
+  "jei.terra_plate_extension.tooltip.fluid_source": "Requires a fluid source block",
+  "message.terra_plate_extension.condition_fail": "The blocks below the Terra Plate do not meet the recipe condition!"
+}

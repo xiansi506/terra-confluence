@@ -1,0 +1,134 @@
+// ============================================================
+// Terra Confluence —— ForgeGradle 构建脚本（Forge 1.20.1 / Java 17）
+// ============================================================
+
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'org.spongepowered.mixin' version '0.7.38'
+}
+
+version = "${mod_version}"
+group = "${mod_group}"
+
+base {
+    archivesName = "${mod_id}"
+}
+
+// Java 17（Minecraft 1.20.1 要求）
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+println "Java: ${System.getProperty('java.version')} (${System.getProperty('java.vendor')})"
+
+minecraft {
+    // 官方映射（official mappings）
+    mappings channel: "${mappings_channel}", version: "${mappings_version}"
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            // 说明：ForgeGradle 6 的开发环境运行的是 named 映射，
+            // Mixin 直接按 named 名称注入即可，无需额外 remap 属性。
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        data {
+            workingDirectory project.file('run')
+            // 数据生成（以后扩展配方数据时使用）：./gradlew runData
+            args '--mod', "${mod_id}", '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    // 阿里云镜像（国内快，排最前面优先使用；缺失的构件会自动回退到后面的官方源）
+    maven { name = 'Aliyun'; url = 'https://maven.aliyun.com/repository/public' }
+    maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' }                        // Botania / Patchouli
+    maven { name = 'BlameJared'; url = 'https://maven.blamejared.com' }                        // JEI
+    maven { name = 'CurseMaven'; url = 'https://www.cursemaven.com' }                          // 备用依赖源（需要文件 ID）
+    maven { name = 'SpongePowered'; url = 'https://repo.spongepowered.org/repository/maven-public/' } // Mixin
+    flatDir { dirs 'libs' }                                                                    // 手动下载的依赖放在 libs/ 目录
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+
+    // ============ 依赖方式开关（gradle.properties 中的 use_local_deps）============
+    // true  = 使用 libs/ 目录中手动下载的 jar（离线，默认；你已放好三个 jar）
+    // false = 从在线 Maven 自动下载（需要网络，适合分发/他人克隆后使用）
+    if (use_local_deps.toBoolean()) {
+        // 说明：本地 jar 必须通过 flatDir 仓库（上方 repositories 中的 libs 目录）解析，
+        // fg.deobf 才能对其进行反混淆；直接用 files(...) 不会被反混淆（编译会报混淆名错误）。
+        // 文件名格式为"名称-版本.jar"，与下方坐标对应：
+        // ---- Botania（必选，编译 + 运行都需要）----
+        implementation fg.deobf('libs:Botania:1.20.1')
+        // ---- Patchouli（Botania 1.20.1 的运行时依赖，仅本地开发运行需要）----
+        runtimeOnly fg.deobf('libs:Patchouli:1.20.1-83')
+        // ---- JEI（可选依赖：编译需要，本地运行需要）----
+        compileOnly fg.deobf('libs:jei:15.49')
+        runtimeOnly fg.deobf('libs:jei:15.49')
+        // ---- KubeJS（可选依赖：仅编译需要；运行时由玩家自行安装）----
+        // 未安装 KubeJS 时本模组完全正常（KubeJS 集成类不会被加载）
+        compileOnly fg.deobf('libs:kubejs:1.20.1')
+    } else {
+        // ---- Botania：Modrinth Maven（无需文件 ID）----
+        implementation fg.deobf("maven.modrinth:botania:${botania_version}")
+        // ---- Patchouli ----
+        runtimeOnly fg.deobf("maven.modrinth:patchouli:${patchouli_version}")
+        // ---- JEI：maven.blamejared.com ----
+        compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+        runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+    }
+    // 备用：CurseMaven（需要 CurseForge 文件 ID，见 README）
+    // implementation fg.deobf('curse.maven:botania-225643:在这里填入文件ID')
+
+    // ============ Mixin（Forge 1.20.1 自带 Mixin 运行时；这里提供编译期类与注解处理器）============
+    compileOnly 'org.spongepowered:mixin:0.8.5'
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+// Mixin 配置：生成 refmap（生产环境混淆名 -> 开发环境 named 名的映射）
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
+}
+
+jar {
+    from 'LICENSE', 'THIRD_PARTY_NOTICES.md'
+    manifest {
+        attributes([
+                'Specification-Title'     : "${mod_id}",
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : "${mod_id}",
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : "${mod_authors}"
+        ])
+    }
+}
+
+// 数据生成目录也作为资源目录（配合 runData 使用）
+sourceSets.main.resources.srcDir 'src/generated/resources'

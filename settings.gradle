@@ -1,0 +1,13 @@
+pluginManagement {
+    repositories {
+        // 阿里云镜像（国内快，优先使用；缺失的构件自动回退到后面的官方源）
+        maven { url = 'https://maven.aliyun.com/repository/gradle-plugin' } // Gradle 插件镜像
+        maven { url = 'https://maven.aliyun.com/repository/public' }        // Maven Central 等镜像
+        gradlePluginPortal()
+        mavenCentral()
+        maven { url = 'https://maven.minecraftforge.net/' }
+    }
+}
+
+// 项目名（Gradle 使用）
+rootProject.name = 'terra-confluence'
