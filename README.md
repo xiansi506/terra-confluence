@@ -1,6 +1,6 @@
 # Terra Confluence · 泰拉凝炼
 
-<img src="docs/terra-confluence-cover-v2.png" alt="Terra Confluence 封面，火花悬浮在九宫格泰拉凝聚板上方" width="420">
+<img src="docs/terra-confluence-cover-16x10.png" alt="Terra Confluence 封面，火花悬浮在九宫格泰拉凝聚板上方" width="640">
 
 **Minecraft 1.20.1 · Forge · Java 17**
 
