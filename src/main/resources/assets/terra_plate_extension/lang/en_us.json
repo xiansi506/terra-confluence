@@ -2,6 +2,8 @@
   "jei.terra_plate_extension.category.title": "Terra Confluence",
   "jei.terra_plate_extension.label.before": "Before",
   "jei.terra_plate_extension.label.after": "After",
+  "jei.terra_plate_extension.label.input_page": "Inputs %s/%s",
+  "jei.terra_plate_extension.tooltip.input_pages": "This recipe requires the inputs on every page. View recipes for this output to see all pages.",
   "jei.terra_plate_extension.tooltip.required": "Required block (before)",
   "jei.terra_plate_extension.tooltip.transformed": "Transformed block (after)",
   "jei.terra_plate_extension.tooltip.position": "Position: x=%s, y=%s, z=%s",

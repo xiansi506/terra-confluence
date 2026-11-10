@@ -188,6 +188,7 @@ public class PlateCondition {
 
     /** 检查在指定旋转角度下所有需求位置是否满足 */
     private boolean matchesRotated(Level level, BlockPos platePos, int rotation) {
+        var inverse = PlatePosition.blockRotation(-rotation);
         for (PositionRequirement req : resolved) {
             BlockPos p = PlatePosition.rotate(req.position(), rotation).resolve(platePos);
             if (req.block().isFluidMatch()) {
@@ -198,7 +199,7 @@ public class PlateCondition {
             } else {
                 // 方块匹配：检查该位置的方块状态
                 BlockState state = level.getBlockState(p);
-                if (!req.block().matches(state)) {
+                if (!req.block().matches(state.rotate(inverse))) {
                     return false;
                 }
             }

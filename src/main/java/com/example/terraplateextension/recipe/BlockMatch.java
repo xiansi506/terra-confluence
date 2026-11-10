@@ -12,7 +12,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 
 /**
  * 对"某个方块/流体"的匹配规则。
@@ -170,14 +170,8 @@ public class BlockMatch {
         }
         for (Map.Entry<String, String> entry : stateProperties.entrySet()) {
             Property<?> property = block.getStateDefinition().getProperty(entry.getKey());
-            if (property == null) {
-                // 该方块没有这个属性
-                return false;
-            }
-            String want = entry.getValue();
-            boolean found = property.getPossibleValues().stream()
-                    .anyMatch(v -> v.toString().equals(want) && state.getValue(property).equals(v));
-            if (!found) {
+            if (property == null
+                    || parsePropertyValue(property, entry.getValue()).filter(state.getValue(property)::equals).isEmpty()) {
                 return false;
             }
         }
@@ -206,7 +200,26 @@ public class BlockMatch {
         if (block == null) {
             throw new IllegalStateException("BlockMatch 没有可放置的方块或流体: " + this);
         }
-        return block.defaultBlockState();
+        BlockState state = block.defaultBlockState();
+        for (Map.Entry<String, String> entry : stateProperties.entrySet()) {
+            Property<?> property = block.getStateDefinition().getProperty(entry.getKey());
+            if (property != null) {
+                state = withProperty(state, property, entry.getValue());
+            }
+        }
+        return state;
+    }
+
+    private static <T extends Comparable<T>> BlockState withProperty(BlockState state, Property<T> property, String value) {
+        // 旧配方的无效属性沿用默认值，有效属性仍正常应用。
+        return parsePropertyValue(property, value).map(parsed -> state.setValue(property, parsed)).orElse(state);
+    }
+
+    private static <T extends Comparable<T>> Optional<T> parsePropertyValue(Property<T> property, String value) {
+        // 优先按 Minecraft 的属性名解析，再接受旧配方使用的 toString 值。
+        return property.getValue(value).or(() -> property.getPossibleValues().stream()
+                .filter(candidate -> candidate.toString().equals(value))
+                .findFirst());
     }
 
     /** 解析方块 ID 字符串；未知 ID 抛出异常（配方数据错误） */

@@ -351,6 +351,11 @@ public class ExtendedTerraPlateRecipeSerializer implements RecipeSerializer<Exte
 
         int mana = buf.readVarInt();
         ItemStack output = buf.readItem();
+        int outputCount = buf.readVarInt();
+        if (output.isEmpty() || outputCount <= 0) {
+            throw new IllegalArgumentException("无效的凝聚板配方产物: " + id);
+        }
+        output.setCount(outputCount);
 
         PlateCondition condition = null;
         if (buf.readBoolean()) {
@@ -378,7 +383,9 @@ public class ExtendedTerraPlateRecipeSerializer implements RecipeSerializer<Exte
         }
 
         buf.writeVarInt(recipe.getMana());
-        buf.writeItem(recipe.getOutput());
+        ItemStack output = recipe.getOutput();
+        buf.writeItem(output.copyWithCount(1));
+        buf.writeVarInt(output.getCount());
 
         PlateCondition condition = recipe.getCondition();
         buf.writeBoolean(condition != null);

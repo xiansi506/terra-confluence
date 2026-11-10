@@ -4,11 +4,13 @@ import com.example.terraplateextension.config.ModConfig;
 import com.example.terraplateextension.recipe.ModRecipeSerializers;
 import com.example.terraplateextension.recipe.ModRecipeTypes;
 import com.mojang.logging.LogUtils;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig.Type;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.network.NetworkRegistry;
 import org.slf4j.Logger;
 
 /**
@@ -25,6 +27,7 @@ public class TerraPlateExtension {
 
     /** 模组 ID */
     public static final String MOD_ID = "terra_plate_extension";
+    private static final String RECIPE_SYNC_PROTOCOL = "2";
 
     /** 日志记录器 */
     public static final Logger LOGGER = LogUtils.getLogger();
@@ -37,6 +40,10 @@ public class TerraPlateExtension {
         ModRecipeTypes.RECIPE_TYPES.register(modEventBus);
         // 注册配方序列化器（对应 JSON 中的 "type" 字段）
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
+
+        // 配方同步的产物总量改用 VarInt。握手时拒绝使用旧编码的客户端或服务端。
+        NetworkRegistry.newSimpleChannel(new ResourceLocation(MOD_ID, "recipe_sync"),
+                () -> RECIPE_SYNC_PROTOCOL, RECIPE_SYNC_PROTOCOL::equals, RECIPE_SYNC_PROTOCOL::equals);
 
         // 注册通用配置（条件失败提示等）
         ModLoadingContext.get().registerConfig(Type.COMMON, ModConfig.COMMON_SPEC);

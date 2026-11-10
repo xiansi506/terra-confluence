@@ -2,6 +2,8 @@
   "jei.terra_plate_extension.category.title": "泰拉凝炼",
   "jei.terra_plate_extension.label.before": "合成前",
   "jei.terra_plate_extension.label.after": "合成后",
+  "jei.terra_plate_extension.label.input_page": "投料 %s/%s",
+  "jei.terra_plate_extension.tooltip.input_pages": "该配方需要所有页的材料。查看此产物的配方可浏览全部投料页。",
   "jei.terra_plate_extension.tooltip.required": "合成前方块",
   "jei.terra_plate_extension.tooltip.transformed": "合成后方块",
   "jei.terra_plate_extension.tooltip.position": "位置：x=%s, y=%s, z=%s",

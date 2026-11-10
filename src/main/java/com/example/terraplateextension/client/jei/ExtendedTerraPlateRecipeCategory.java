@@ -6,6 +6,7 @@ import com.example.terraplateextension.recipe.BlockMatch;
 import com.example.terraplateextension.recipe.PlatePosition;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
+import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
@@ -14,13 +15,13 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.item.Item;
@@ -28,8 +29,6 @@ import org.jetbrains.annotations.Nullable;
 import vazkii.botania.client.gui.HUDHandler;
 import vazkii.botania.common.block.BotaniaBlocks;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,7 +37,7 @@ import java.util.Map;
  *
  * <p>布局仿照 Botania 原版凝聚板 JEI 类别（1.12.2 Botania Tweaks 沿用的样式）：
  * <ul>
- *   <li>顶部：输入材料横排（模拟"往板上扔材料"）；</li>
+ *   <li>顶部：输入材料最多两行，第二行分布在下箭头两侧；</li>
  *   <li>中央：下箭头与产物槽；</li>
  *   <li>底部：左侧"合成前"3x3 平台方块，右侧"合成后"3x3 转化方块，中间箭头连接；
  *       两个网格均注册为 JEI 槽位，可与 JEI 联动（点击/按 U/R 查看方块参与的配方）；</li>
@@ -51,18 +50,23 @@ public class ExtendedTerraPlateRecipeCategory implements IRecipeCategory<ITerraP
 
     private static final String LANG = "jei." + TerraPlateExtension.MOD_ID + ".";
 
-    // ===== 布局常量（整体尺寸与原版 Botania 凝聚板 JEI 一致） =====
-    public static final int WIDTH = 170;
+    // 背景左右各加 1px，给两个完整平台及其间的箭头留出空间。
+    private static final int TEXTURE_WIDTH = 170;
+    public static final int WIDTH = TEXTURE_WIDTH + 2;
     public static final int HEIGHT = 130;
 
-    /** Botania Tweaks 原版 JEI 坐标系：中心 x=85，类别宽度 170。 */
+    private static final int CENTER_X = WIDTH / 2;
     private static final int INPUT_Y = 0;
+    private static final int SECOND_INPUT_Y = 18;
+    private static final int INPUT_SIZE = 16;
     private static final int INPUT_SPACING = 20;
-    private static final int GRID_BASE_X_BEFORE = 36;
-    private static final int GRID_BASE_X_AFTER = 132;
+    private static final int INPUTS_PER_ROW = 8;
+    private static final int INPUTS_PER_PAGE = INPUTS_PER_ROW * 2;
+    private static final int GRID_BASE_X_BEFORE = 40;
+    private static final int GRID_BASE_X_AFTER = WIDTH - 40;
 
     /** mana 条（原版 HUD 样式；右移 4px 视觉居中） */
-    private static final int MANA_X = 35;
+    private static final int MANA_X = CENTER_X - 50;
     private static final int MANA_Y = 60;
     private static final int MANA_WIDTH = 100;
     private static final int PLATE_MAX_MANA = 1_000_000;
@@ -71,9 +75,9 @@ public class ExtendedTerraPlateRecipeCategory implements IRecipeCategory<ITerraP
     private final IDrawable icon;
 
     public ExtendedTerraPlateRecipeCategory(IGuiHelper guiHelper) {
-        this.background = guiHelper.createDrawable(
+        this.background = guiHelper.drawableBuilder(
                 new ResourceLocation(TerraPlateExtension.MOD_ID, "textures/gui/terrasteeloverlay.png"),
-                0, 0, WIDTH, HEIGHT);
+                0, 0, TEXTURE_WIDTH, HEIGHT).addPadding(0, 0, 1, 1).build();
         // 类别图标：泰拉凝聚板方块
         this.icon = guiHelper.createDrawableIngredient(VanillaTypes.ITEM_STACK,
                 new ItemStack(BotaniaBlocks.terraPlate));
@@ -110,20 +114,43 @@ public class ExtendedTerraPlateRecipeCategory implements IRecipeCategory<ITerraP
         return HEIGHT;
     }
 
-    @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, ITerraPlateRecipeView view, IFocusGroup focuses) {
-        // Botania Tweaks 的精确布局：材料在 y=0 横排，产物在材料行下方 36 像素。
+    static void addRecipePages(List<ITerraPlateRecipeView> views, ITerraPlateRecipeView view) {
         List<Ingredient> inputs = view.getInputs();
         int count = inputs.size();
-        int firstX = 85 - (16 * count + 4 * Math.max(0, count - 1)) / 2;
-        for (int i = 0; i < count; i++) {
-            builder.addSlot(RecipeIngredientRole.INPUT, firstX + i * INPUT_SPACING, INPUT_Y)
-                    .addIngredients(inputs.get(i));
+        if (count <= INPUTS_PER_PAGE) {
+            views.add(view);
+            return;
         }
 
-        int contentY = count == 0 ? 0 : 36;
-        builder.addSlot(RecipeIngredientRole.OUTPUT, 77, contentY)
+        int pageCount = 1 + (count - 1) / INPUTS_PER_PAGE;
+        for (int start = 0; start < count; ) {
+            int end = start + Math.min(INPUTS_PER_PAGE, count - start);
+            views.add(new InputPage(view, inputs.subList(start, end), 1 + start / INPUTS_PER_PAGE, pageCount));
+            start = end;
+        }
+    }
+
+    @Override
+    public void setRecipe(IRecipeLayoutBuilder builder, ITerraPlateRecipeView view, IFocusGroup focuses) {
+        List<Ingredient> inputs = view.getInputs();
+        int firstRow = Math.min(inputs.size(), INPUTS_PER_ROW);
+        addInputRow(builder, inputs, 0, firstRow, CENTER_X, INPUT_Y);
+
+        // 第二行留出中间的箭头位置。
+        int secondRow = inputs.size() - firstRow;
+        int left = (secondRow + 1) / 2;
+        addInputRow(builder, inputs, firstRow, left, CENTER_X - 46, SECOND_INPUT_Y);
+        addInputRow(builder, inputs, firstRow + left, secondRow - left, CENTER_X + 46, SECOND_INPUT_Y);
+
+        int contentY = inputs.isEmpty() ? 0 : 36;
+        IRecipeSlotBuilder output = builder.addSlot(RecipeIngredientRole.OUTPUT, CENTER_X - 8, contentY)
                 .addItemStack(view.getOutput());
+        if (view instanceof InputPage page) {
+            output.addTooltipCallback((slotView, tooltip) -> {
+                tooltip.add(page.label());
+                tooltip.add(Component.translatable(LANG + "tooltip.input_pages"));
+            });
+        }
 
         int platformY = contentY + 67;
 
@@ -133,6 +160,57 @@ public class ExtendedTerraPlateRecipeCategory implements IRecipeCategory<ITerraP
         // 右侧"合成后"网格：转化方块注册为 OUTPUT 槽（点击查看该方块如何获得，即本凝聚板配方）
         addGridSlots(builder, view.getAfterLayout(), GRID_BASE_X_AFTER, platformY,
                 RecipeIngredientRole.OUTPUT, LANG + "tooltip.transformed");
+    }
+
+    private static void addInputRow(IRecipeLayoutBuilder builder, List<Ingredient> inputs, int start,
+                                    int count, int centerX, int y) {
+        int firstX = centerX - (INPUT_SIZE + (count - 1) * INPUT_SPACING) / 2;
+        for (int i = 0; i < count; i++) {
+            builder.addSlot(RecipeIngredientRole.INPUT, firstX + i * INPUT_SPACING, y)
+                    .addIngredients(inputs.get(start + i));
+        }
+    }
+
+    private record InputPage(ITerraPlateRecipeView recipe, List<Ingredient> inputs,
+                             int number, int count) implements ITerraPlateRecipeView {
+        Component label() {
+            return Component.translatable(LANG + "label.input_page", number, count);
+        }
+
+        @Override
+        public ResourceLocation getId() {
+            return recipe.getId();
+        }
+
+        @Override
+        public List<Ingredient> getInputs() {
+            return inputs;
+        }
+
+        @Override
+        public ItemStack getOutput() {
+            return recipe.getOutput();
+        }
+
+        @Override
+        public int getMana() {
+            return recipe.getMana();
+        }
+
+        @Override
+        public boolean isCustom() {
+            return recipe.isCustom();
+        }
+
+        @Override
+        public List<BlockLayoutEntry> getBeforeLayout() {
+            return recipe.getBeforeLayout();
+        }
+
+        @Override
+        public List<BlockLayoutEntry> getAfterLayout() {
+            return recipe.getAfterLayout();
+        }
     }
 
     /** 把方块布局注册为 JEI 槽位（流体匹配/流体方块注册为流体槽，无水物品方块跳过由 draw 绘制占位） */
@@ -254,8 +332,19 @@ public class ExtendedTerraPlateRecipeCategory implements IRecipeCategory<ITerraP
     @Override
     public void draw(ITerraPlateRecipeView view, IRecipeSlotsView slotsView, GuiGraphics gui,
                      double mouseX, double mouseY) {
-        // 箭头由 Botania Tweaks 的 terrasteeloverlay 纹理绘制；这里只绘制魔力条。
+        // 箭头由 Botania Tweaks 的 terrasteeloverlay 纹理绘制。
         HUDHandler.renderManaBar(gui, MANA_X, MANA_Y, MANA_WIDTH, 0.75F, view.getMana(), PLATE_MAX_MANA);
+        if (view instanceof InputPage page) {
+            Font font = Minecraft.getInstance().font;
+            Component label = page.label();
+            int textWidth = font.width(label);
+            float scale = Math.min(1.0F, 72.0F / textWidth);
+            gui.pose().pushPose();
+            gui.pose().translate(WIDTH - 2, 40, 0);
+            gui.pose().scale(scale, scale, 1.0F);
+            gui.drawString(font, label, -textWidth, 0, 0xFF404040, false);
+            gui.pose().popPose();
+        }
         // 底部：合成前/合成后平台方块（由 setRecipe 注册成 JEI 槽位的格子由 JEI 渲染）
         drawPlatform(gui, view);
     }

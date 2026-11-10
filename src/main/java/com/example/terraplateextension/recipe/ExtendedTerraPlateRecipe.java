@@ -14,6 +14,7 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -29,6 +30,8 @@ import java.util.List;
  * Botania 原版逻辑不会处理本类型；本模组通过 Mixin 在凝聚板逻辑中额外处理。
  */
 public class ExtendedTerraPlateRecipe implements Recipe<Container> {
+
+    private static final int MAX_OUTPUT_STACKS = 64;
 
     private final ResourceLocation id;
     private final List<Ingredient> ingredients;
@@ -46,6 +49,12 @@ public class ExtendedTerraPlateRecipe implements Recipe<Container> {
     public ExtendedTerraPlateRecipe(ResourceLocation id, List<Ingredient> ingredients, int mana, ItemStack output,
                                     @Nullable PlateCondition condition, List<BlockTransform> transforms,
                                     @Nullable BlockMatch transformAll) {
+        if (mana < 0) {
+            throw new IllegalArgumentException("配方 " + id + " 的 mana 不能为负数");
+        }
+        if (output.isEmpty() || output.getCount() > MAX_OUTPUT_STACKS * outputStackSize(output)) {
+            throw new IllegalArgumentException("配方 " + id + " 的产物必须为 1 至 " + MAX_OUTPUT_STACKS + " 堆以内的物品");
+        }
         this.id = id;
         this.ingredients = List.copyOf(ingredients);
         this.mana = mana;
@@ -75,6 +84,15 @@ public class ExtendedTerraPlateRecipe implements Recipe<Container> {
     /** 产物 */
     public ItemStack getOutput() {
         return output;
+    }
+
+    public int getOutputStackSize() {
+        return outputStackSize(output);
+    }
+
+    private static int outputStackSize(ItemStack stack) {
+        // 掉落物的物品栈仍使用 Minecraft 的有符号字节数量字段。
+        return Math.min(stack.getMaxStackSize(), Byte.MAX_VALUE);
     }
 
     /** 下方方块条件（可能为 null） */
@@ -144,10 +162,11 @@ public class ExtendedTerraPlateRecipe implements Recipe<Container> {
         if (transforms.isEmpty() && transformAll == null) {
             return;
         }
+        var blockRotation = PlatePosition.blockRotation(rotation);
         java.util.Set<PlatePosition> explicitPositions = new java.util.HashSet<>();
         for (BlockTransform t : transforms) {
             BlockPos p = PlatePosition.rotate(t.position(), rotation).resolve(platePos);
-            level.setBlock(p, t.target().placementState(), 3);
+            level.setBlock(p, t.target().placementState().rotate(blockRotation), 3);
             explicitPositions.add(t.position());
         }
         if (transformAll != null) {
@@ -156,7 +175,7 @@ public class ExtendedTerraPlateRecipe implements Recipe<Container> {
                     continue; // result_blocks 指定过的位置保持不变
                 }
                 BlockPos p = PlatePosition.rotate(req.position(), rotation).resolve(platePos);
-                level.setBlock(p, transformAll.placementState(), 3);
+                level.setBlock(p, transformAll.placementState().rotate(blockRotation), 3);
             }
         }
         // 通知邻居方块更新（红石等），setBlock 的 flag 3 已包含客户端同步
@@ -164,8 +183,7 @@ public class ExtendedTerraPlateRecipe implements Recipe<Container> {
     }
 
     /**
-     * 判断给定的物品堆叠集合是否满足本配方的输入（多重集合匹配，
-     * 与 Botania 原版 validateRecipe 逻辑一致）。
+     * 判断给定的物品堆叠集合是否满足本配方的输入，匹配不依赖于堆叠或配料的顺序。
      *
      * <p>按<b>总数量</b>匹配：板上物品的 count 总和必须与配料条目数完全一致
      * （防止多余物品被吞或重复合成），且每个配料条目从堆叠中消耗 1 个。
@@ -176,39 +194,73 @@ public class ExtendedTerraPlateRecipe implements Recipe<Container> {
         if (ingredients.isEmpty()) {
             return false;
         }
-        int totalInput = 0;
-        for (ItemStack s : stacks) {
-            if (!s.isEmpty()) {
-                totalInput += s.getCount();
+        List<ItemStack> pool = new ArrayList<>();
+        long totalInput = 0;
+        for (ItemStack stack : stacks) {
+            if (!stack.isEmpty()) {
+                pool.add(stack);
+                totalInput += stack.getCount();
             }
         }
         if (totalInput != ingredients.size()) {
             return false;
         }
-        List<ItemStack> pool = new ArrayList<>();
-        for (ItemStack s : stacks) {
-            if (!s.isEmpty()) {
-                pool.add(s.copy());
-            }
+
+        int[] remaining = new int[pool.size()];
+        for (int stack = 0; stack < pool.size(); stack++) {
+            remaining[stack] = pool.get(stack).getCount();
         }
-        for (Ingredient ingredient : ingredients) {
-            boolean matched = false;
-            for (int i = 0; i < pool.size(); i++) {
-                ItemStack stack = pool.get(i);
-                if (ingredient.test(stack)) {
-                    stack.shrink(1); // count>1 的合并栈可被多个条目消耗
-                    if (stack.isEmpty()) {
-                        pool.remove(i);
-                    }
-                    matched = true;
-                    break;
-                }
+        boolean[][] compatible = new boolean[ingredients.size()][];
+        int[] assignedStack = new int[ingredients.size()];
+        int[] queue = new int[ingredients.size()];
+        int[] stackPredecessor = new int[pool.size()];
+        for (int ingredient = 0; ingredient < ingredients.size(); ingredient++) {
+            Ingredient input = ingredients.get(ingredient);
+            boolean[] matches = new boolean[pool.size()];
+            for (int stack = 0; stack < pool.size(); stack++) {
+                matches[stack] = input.test(pool.get(stack));
             }
-            if (!matched) {
+            compatible[ingredient] = matches;
+            if (!assignIngredient(ingredient, compatible, remaining, assignedStack, queue, stackPredecessor)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean assignIngredient(int ingredient, boolean[][] compatible, int[] remaining,
+                                            int[] assignedStack, int[] queue, int[] stackPredecessor) {
+        // 沿增广路径重新分配已匹配的配料，让重叠的标签和物品条件都能获得所需物品。
+        Arrays.fill(stackPredecessor, -1);
+        int queued = 1;
+        queue[0] = ingredient;
+        for (int index = 0; index < queued; index++) {
+            int candidate = queue[index];
+            for (int stack = 0; stack < remaining.length; stack++) {
+                if (stackPredecessor[stack] != -1 || !compatible[candidate][stack]) {
+                    continue;
+                }
+                stackPredecessor[stack] = candidate;
+                if (remaining[stack] > 0) {
+                    remaining[stack]--;
+                    int destination = stack;
+                    while (candidate != ingredient) {
+                        int previous = assignedStack[candidate];
+                        assignedStack[candidate] = destination;
+                        destination = previous;
+                        candidate = stackPredecessor[previous];
+                    }
+                    assignedStack[ingredient] = destination;
+                    return true;
+                }
+                for (int prior = 0; prior < ingredient; prior++) {
+                    if (assignedStack[prior] == stack) {
+                        queue[queued++] = prior;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     // ==================== Recipe 接口实现 ====================

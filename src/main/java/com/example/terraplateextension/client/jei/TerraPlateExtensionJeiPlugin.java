@@ -71,12 +71,12 @@ public class TerraPlateExtensionJeiPlugin implements IModPlugin {
 
         // 1) 扩展配方
         for (ExtendedTerraPlateRecipe recipe : level.getRecipeManager().getAllRecipesFor(ModRecipeTypes.TERRA_PLATE.get())) {
-            views.add(new ExtendedRecipeView(recipe));
+            ExtendedTerraPlateRecipeCategory.addRecipePages(views, new ExtendedRecipeView(recipe));
         }
 
         // 2) Botania 原版泰拉凝聚板配方（1.20.1 接口名：TerrestrialAgglomerationRecipe）
         for (TerrestrialAgglomerationRecipe recipe : level.getRecipeManager().getAllRecipesFor(BotaniaRecipeTypes.TERRA_PLATE_TYPE)) {
-            views.add(new VanillaRecipeView(recipe, level.registryAccess()));
+            ExtendedTerraPlateRecipeCategory.addRecipePages(views, new VanillaRecipeView(recipe, level.registryAccess()));
         }
 
         registration.addRecipes(RECIPE_TYPE, views);

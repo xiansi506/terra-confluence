@@ -14,7 +14,7 @@ version = "${mod_version}"
 group = "${mod_group}"
 
 base {
-    archivesName = "${mod_id}"
+    archivesName = rootProject.name
 }
 
 // Java 17（Minecraft 1.20.1 要求）

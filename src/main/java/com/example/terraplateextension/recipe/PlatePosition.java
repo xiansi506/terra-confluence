@@ -1,6 +1,7 @@
 package com.example.terraplateextension.recipe;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Rotation;
 
 /**
  * 相对于泰拉凝聚板方块的位置偏移。
@@ -46,6 +47,15 @@ public record PlatePosition(int x, int y, int z) {
             case 2 -> new PlatePosition(-x, pos.y(), -z);  // 180°
             case 3 -> new PlatePosition(z, pos.y(), -x);   // 270°
             default -> pos;
+        };
+    }
+
+    static Rotation blockRotation(int quarters) {
+        return switch (Math.floorMod(quarters, 4)) {
+            case 1 -> Rotation.CLOCKWISE_90;
+            case 2 -> Rotation.CLOCKWISE_180;
+            case 3 -> Rotation.COUNTERCLOCKWISE_90;
+            default -> Rotation.NONE;
         };
     }
 }
